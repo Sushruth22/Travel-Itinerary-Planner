@@ -34,6 +34,9 @@ public class TripService {
     @Autowired
     private DayPlanRepository dayPlanRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     public TripResponse createTrip(TripCreateRequest request, User user) {
         Trip trip = new Trip();
         trip.setTitle(request.getTitle());
@@ -72,6 +75,55 @@ public class TripService {
     public Page<TripResponse> getUserTrips(User user, Pageable pageable) {
         Page<Trip> trips = tripRepository.findByUserOrMember(user, pageable);
         return trips.map(this::convertToTripResponse);
+    }
+
+    // Temporary method for testing without authentication
+    public Page<TripResponse> getAllTrips(Pageable pageable) {
+        Page<Trip> trips = tripRepository.findAll(pageable);
+        return trips.map(this::convertToTripResponse);
+    }
+
+    // Temporary method to create trips without authentication
+    public TripResponse createTripWithoutAuth(TripCreateRequest request) {
+        // Create or get a dummy user for testing
+        User dummyUser = userRepository.findByEmail("test@example.com")
+            .orElseGet(() -> {
+                User newUser = new User();
+                newUser.setFirstName("Test");
+                newUser.setLastName("User");
+                newUser.setEmail("test@example.com");
+                newUser.setPassword("dummy"); // Dummy password
+                return userRepository.save(newUser);
+            });
+        
+        Trip trip = new Trip();
+        trip.setTitle(request.getTitle());
+        trip.setDescription(request.getDescription());
+        trip.setStartDate(request.getStartDate());
+        trip.setEndDate(request.getEndDate());
+        trip.setDestination(request.getDestination());
+        trip.setBudget(request.getBudget());
+        trip.setIsPublic(request.getIsPublic());
+        trip.setCoverImageUrl(request.getCoverImageUrl());
+        trip.setUser(dummyUser);
+
+        // Handle tags
+        if (request.getTagNames() != null && !request.getTagNames().isEmpty()) {
+            Set<Tag> tags = new HashSet<>();
+            for (String tagName : request.getTagNames()) {
+                Tag tag = tagRepository.findByName(tagName)
+                    .orElseGet(() -> tagRepository.save(new Tag(tagName)));
+                tags.add(tag);
+            }
+            trip.setTags(tags);
+        }
+
+        trip = tripRepository.save(trip);
+
+        // Create day plans for each day of the trip
+        createDayPlansForTrip(trip);
+
+        return convertToTripResponseWithoutUser(trip, dummyUser);
     }
 
     public Optional<TripResponse> getTripById(UUID tripId, User user) {
@@ -192,6 +244,35 @@ public class TripService {
             owner.getLastName(),
             owner.getEmail(),
             owner.getProfilePictureUrl()
+        );
+        response.setOwner(ownerResponse);
+
+        return response;
+    }
+
+    private TripResponse convertToTripResponseWithoutUser(Trip trip, User dummyUser) {
+        TripResponse response = new TripResponse();
+        response.setId(trip.getId());
+        response.setTitle(trip.getTitle());
+        response.setDescription(trip.getDescription());
+        response.setStartDate(trip.getStartDate());
+        response.setEndDate(trip.getEndDate());
+        response.setDestination(trip.getDestination());
+        response.setBudget(trip.getBudget());
+        response.setIsPublic(trip.getIsPublic());
+        response.setCoverImageUrl(trip.getCoverImageUrl());
+        response.setTags(trip.getTags());
+        response.setMemberCount(1); // Just the dummy user
+        response.setCreatedAt(trip.getCreatedAt());
+        response.setUpdatedAt(trip.getUpdatedAt());
+
+        // Convert dummy user to owner
+        UserSummaryResponse ownerResponse = new UserSummaryResponse(
+            dummyUser.getId(),
+            dummyUser.getFirstName(),
+            dummyUser.getLastName(),
+            dummyUser.getEmail(),
+            null // No profile picture
         );
         response.setOwner(ownerResponse);
 

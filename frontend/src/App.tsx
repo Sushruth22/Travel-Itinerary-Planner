@@ -14,24 +14,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 function App() {
   const { user, isLoading } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    );
-  }
-
+  // Temporarily bypass authentication for testing
   return (
     <Layout>
       <Routes>
@@ -41,6 +24,8 @@ function App() {
         <Route path="/trips/:tripId/calendar" element={<CalendarPage />} />
         <Route path="/trips/:tripId/days/:date" element={<DayViewPage />} />
         <Route path="/trips/:tripId/costs" element={<CostsPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route path="*" element={<Navigate to="/trips" replace />} />
       </Routes>
     </Layout>
